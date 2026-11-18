@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Evidens 2026</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .card-stat { border-radius: 12px; color: white; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border: none; transition: transform 0.2s;}
+    .card-stat:hover { transform: translateY(-3px); }
+    .bg-jumlah { background: linear-gradient(135deg, #1e3c72, #2a5298); }
+    .bg-lengkap { background: linear-gradient(135deg, #11998e, #38ef7d); }
+    .bg-belum { background: linear-gradient(135deg, #cb2d3e, #ef473a); }
+    .table-container { overflow-x: auto; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .nav-tabs .nav-link.active { font-weight: bold; color: #1e3c72; border-bottom: 3px solid #1e3c72; }
+    
+    /* Highlight untuk baris tajuk Standard (contoh: STANDARD 1: KEPIMPINAN) */
+    .row-title { background-color: #e9ecef !important; font-weight: bold; }
+    
+    /* Print Styles */
+    @media print {
+      .no-print { display: none !important; }
+      body { background-color: white; }
+      .table-container { box-shadow: none; border: none; padding: 0; }
+      .badge { border: 1px solid #000; color: #000 !important; background: transparent !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark no-print">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="#"><i class="fas fa-folder-tree text-warning me-2"></i>Sistem Evidens 2026</a>
+      <div class="d-flex gap-2">
+        <button class="btn btn-light btn-sm fw-bold" onclick="window.print()"><i class="fas fa-print"></i> Cetak</button>
+        <button id="btnLogin" class="btn btn-warning btn-sm fw-bold" onclick="openLoginModal()"><i class="fas fa-lock"></i> Admin</button>
+        <button id="btnLogout" class="btn btn-outline-danger btn-sm d-none fw-bold" onclick="logoutAdmin()"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    
+    <!-- Tab Navigasi -->
+    <ul class="nav nav-tabs mb-4 no-print" id="myTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#dashboard" type="button"><i class="fas fa-home"></i> Dashboard & Fail</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#analytics" type="button"><i class="fas fa-chart-pie"></i> Analitik Pegawai (PIC)</button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="myTabContent">
+      
+      <!-- TAB 1: DASHBOARD & FAIL -->
+      <div class="tab-pane fade show active" id="dashboard">
+        <!-- Statistik -->
+        <div class="row mb-4 text-center">
+          <div class="col-md-4 mb-2">
+            <div class="card card-stat bg-jumlah p-3">
+              <h6 class="opacity-75 mb-1"><i class="fas fa-file-alt"></i> Keseluruhan</h6>
+              <h2 id="statJumlah" class="fw-bold mb-0">0</h2>
+            </div>
+          </div>
+          <div class="col-md-4 mb-2">
+            <div class="card card-stat bg-lengkap p-3">
+              <h6 class="opacity-75 mb-1"><i class="fas fa-check-circle"></i> Lengkap</h6>
+              <h2 id="statLengkap" class="fw-bold mb-0">0</h2>
+            </div>
+          </div>
+          <div class="col-md-4 mb-2">
+            <div class="card card-stat bg-belum p-3">
+              <h6 class="opacity-75 mb-1"><i class="fas fa-times-circle"></i> Belum Lengkap</h6>
+              <h2 id="statBelum" class="fw-bold mb-0">0</h2>
+            </div>
+          </div>
+        </div>
+
+        <div class="input-group mb-3 no-print">
+          <span class="input-group-text bg-white"><i class="fas fa-search"></i></span>
+          <input type="text" id="searchBox" class="form-control" placeholder="Cari Standard, Dokumen atau PIC..." onkeyup="filterTable()">
+          <button class="btn btn-success action-col d-none fw-bold" type="button" onclick="openAddModal()"><i class="fas fa-plus"></i> Tambah Standard</button>
+        </div>
+
+        <div class="table-container mb-5">
+          <div class="text-center py-4" id="loadingDiv">
+            <div class="spinner-border text-primary" role="status"></div><br><small class="text-muted mt-2">Memuatkan pangkalan data terkini...</small>
+          </div>
+          
+          <table class="table table-hover align-middle d-none" id="dataTable">
+            <thead class="table-dark">
+              <tr>
+                <th width="10%">Standard</th>
+                <th width="35%">Dokumen Evidens</th>
+                <th width="15%">Pegawai (PIC)</th>
+                <th width="15%">Status</th>
+                <th width="10%" class="text-center">Evidens</th>
+                <th width="15%" class="action-col text-center d-none no-print">Tindakan Admin</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 2: ANALITIK -->
+      <div class="tab-pane fade" id="analytics">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-white fw-bold"><i class="fas fa-users text-primary"></i> Prestasi Evidens Mengikut Pegawai / Panitia</div>
+          <div class="card-body">
+            <div class="row" id="analyticsContainer">
+              <!-- Diisi oleh JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal Log Masuk -->
+  <div class="modal fade no-print" id="loginModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-dark text-white p-2">
+          <h6 class="modal-title ms-2">Akses Admin</h6>
+          <button type="button" class="btn-close btn-close-white me-2" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-3">
+          <input type="password" id="adminPassword" class="form-control" placeholder="Kata laluan...">
+          <div id="loginError" class="text-danger d-none small mt-1">Kata laluan salah!</div>
+          <button class="btn btn-primary w-100 mt-3" onclick="verifyLogin()">Log Masuk</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Kemaskini & Upload (Admin) -->
+  <div class="modal fade no-print" id="actionModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h6 class="modal-title"><i class="fas fa-edit"></i> Urus Evidens: <span id="mStd"></span></h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="mRowIdx">
+          <input type="hidden" id="mStandardId">
+          
+          <div class="alert alert-secondary p-2 small mb-3"><strong id="mDocName"></strong></div>
+
+          <!-- Tab Edit -->
+          <ul class="nav nav-pills nav-fill mb-3" role="tablist">
+            <li class="nav-item"><button class="nav-link active py-1" data-bs-toggle="tab" data-bs-target="#editInfo">Kemaskini Info</button></li>
+            <li class="nav-item"><button class="nav-link py-1" data-bs-toggle="tab" data-bs-target="#uploadFile">Upload Evidens</button></li>
+          </ul>
+
+          <div class="tab-content">
+            <!-- Edit Info -->
+            <div class="tab-pane fade show active" id="editInfo">
+              <label class="form-label small fw-bold">Nama Pegawai (PIC) / Panitia</label>
+              <input type="text" id="mPic" class="form-control mb-2" placeholder="Masukkan nama...">
+              
+              <label class="form-label small fw-bold">Status Catatan</label>
+              <select id="mStatus" class="form-select mb-3">
+                <option value="Belum Lengkap">Belum Lengkap</option>
+                <option value="Sedang Diproses">Sedang Diproses</option>
+                <option value="Lengkap">Lengkap</option>
+              </select>
+
+              <label class="form-label small fw-bold">Pautan Drive Luar (Jika ada)</label>
+              <input type="text" id="mLink" class="form-control mb-2" placeholder="https://drive.google.com/...">
+
+              <button class="btn btn-success w-100" id="btnSaveInfo" onclick="saveInfo()">
+                <i class="fas fa-save"></i> Simpan Maklumat
+              </button>
+            </div>
+
+            <!-- Upload File -->
+            <div class="tab-pane fade" id="uploadFile">
+              <div class="alert alert-warning small py-2"><i class="fas fa-info-circle"></i> Fail yang dimuat naik akan disimpan secara automatik ke dalam folder Google Drive anda (Sub-folder: <b><span id="mStd2"></span></b>).</div>
+              <input type="file" id="fileInput" class="form-control mb-3">
+              <button class="btn btn-primary w-100" id="btnUpload" onclick="handleUpload()">
+                <i class="fas fa-cloud-upload-alt"></i> Mula Muat Naik
+              </button>
+              <div id="uploadStatus" class="text-center mt-2 small fw-bold"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Tambah Standard Baru (Admin) -->
+  <div class="modal fade no-print" id="addModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h6 class="modal-title"><i class="fas fa-plus-circle"></i> Tambah Standard Baru</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <label class="form-label small fw-bold">Nombor / Tajuk Standard</label>
+          <input type="text" id="newStandard" class="form-control mb-3" placeholder="Contoh: 4.1.1 atau STANDARD 4">
+          
+          <label class="form-label small fw-bold">Nama Dokumen Evidens</label>
+          <textarea id="newDokumen" class="form-control mb-3" rows="2" placeholder="Nama dokumen..."></textarea>
+          
+          <label class="form-label small fw-bold">Pegawai (PIC)</label>
+          <input type="text" id="newPic" class="form-control mb-4" placeholder="Nama pegawai dipertanggungjawabkan...">
+          
+          <button class="btn btn-success w-100 fw-bold" id="btnAddSave" onclick="saveNewStandard()">
+            <i class="fas fa-save"></i> Simpan Standard
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Mock data ini HANYA JALAN jika fail html ini dibuka luar dari server Apps Script (Preview di sini)
+    // Di server sebenar, ia akan mengambil data sebenar dari Sheet.
+    if (typeof google === 'undefined') {
+      console.warn("Sedang dijalankan di luar Google Apps Script. Data tiruan (mock) digunakan.");
+      window.google = {
+        script: {
+          run: {
+            withSuccessHandler: function(callback) {
+              return {
+                getData: function() {
+                  setTimeout(() => {
+                    callback({
+                      success: true,
+                      stats: { jumlah: 133, lengkap: 1, belum: 132 },
+                      analytics: [
+                        { nama: 'Pengetua', data: { total: 2, lengkap: 1, belum: 1 } },
+                        { nama: 'PK Pentadbiran', data: { total: 1, lengkap: 0, belum: 1 } }
+                      ],
+                      data: [
+                        { rowIdx: 2, standard: 'STANDARD 1: KEPIMPINAN', dokumen: '', pic: '', status: '', link: '' },
+                        { rowIdx: 3, standard: '1.1.1', dokumen: 'Analisis SWOT', pic: 'Pengetua', status: 'Lengkap', link: '#' },
+                        { rowIdx: 4, standard: '1.1.2', dokumen: 'Analisis jurang, Spect, OPPM', pic: 'PK Pentadbiran', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 5, standard: '1.1.4', dokumen: 'Dokumen Pentaksiran murid kelas PGB', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 6, standard: '1.1.2', dokumen: 'Dokumen Perancangan Strategik (pelan Strategik, Pelan Taktikal dan Pelan Operasi)', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 7, standard: '1.1.4', dokumen: 'Contoh Semakan Kerja Murid oleh PGB', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 8, standard: '1.1.3', dokumen: 'Rumusan pemantauan oleh PGB', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 9, standard: '1.1.4', dokumen: 'RPH PGB', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 10, standard: '1.1.2', dokumen: 'Garis panduan/ format perancangan strategik', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 11, standard: '1.1.3', dokumen: 'Jadual Pemantauan PdP', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 12, standard: '1.1.5', dokumen: 'Jadual Pencerapan Pdp', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 13, standard: '1.3.3', dokumen: 'Perbincangan skor PBPPP', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 14, standard: '1.3.3', dokumen: 'Laporan bergambar penglibatan pentadbir dalam aktiviti sekolah', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 15, standard: '1.2.2', dokumen: 'Laporan coaching & mentoring', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 16, standard: '1.3.1', dokumen: 'Catatan setiap perbincangan professional bersama subordinat - plc', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 17, standard: '1.3.1', dokumen: 'Catatan setiap perbincangan professional bersama subordinat - plc', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 18, standard: '1.1.6', dokumen: 'Analisis headcount', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 19, standard: '1.1.5', dokumen: 'Analisis Jurang, OPPM untuk Standard 4', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 20, standard: '1.2.1', dokumen: 'Slaid taklimat/ bengkel/ kursus/ ceramah', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 21, standard: '1.2.1', dokumen: 'Slaid taklimat/ bengkel/ kursus/ ceramah', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 22, standard: '1.2.1', dokumen: 'Slaid taklimat/ bengkel/ kursus/ ceramah', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 23, standard: '1.3.2', dokumen: 'Facebook, whatsapp, instagram dan telegram', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 24, standard: '1.3.3', dokumen: 'Senarai keperluan dan kemudahan yang disediakan kepada warga sekolah tahun semasa', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 25, standard: '1.1.5', dokumen: 'Analisis Standard 4', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 26, standard: '1.1.5', dokumen: 'Slaid taklimat Pencerapan Pdp', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 27, standard: '1.1.7', dokumen: 'Isu/ Masalah dan cara penyelesaian 3K', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 28, standard: '1.1.3', dokumen: 'Laporan post mortem Program Kurikulum, Kokurikulum & HEM', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 29, standard: '1.1.3', dokumen: 'Laporan post mortem Program Kurikulum, Kokurikulum & HEM', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 30, standard: '1.1.3', dokumen: 'Laporan post mortem Program Kurikulum, Kokurikulum & HEM', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 31, standard: '1.3.2', dokumen: 'Peti cadangan/ aduan pelanggan', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 32, standard: '1.1.3', dokumen: 'Jadual Pemantauan Program Kurikulum / Kokurikulum / HEM oleh PGB - takwim', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 33, standard: '1.1.3', dokumen: 'Minit Mesyuarat JK Pemantauan Bil 1 & 2', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 34, standard: '1.1.1', dokumen: 'Dashboard sekolah', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 35, standard: '1.1.6', dokumen: 'Program / Intervensi kecemerlangan sekolah', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 36, standard: '1.1.6', dokumen: 'Program / Intervensi kecemerlangan sekolah', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 37, standard: '1.3.3', dokumen: 'Pamer penerima APC / Sijil penghargaan sekolah', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 38, standard: '1.2.2', dokumen: 'Laporan eksekutif perbincangan dengan PK', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 39, standard: 'STANDARD 2: PENGURUSAN ORGANISASI', dokumen: '', pic: '', status: '', link: '' },
+                        { rowIdx: 40, standard: '2.3', dokumen: 'Dokumen Pengurusan Kewangan & Akaun Sekolah', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 41, standard: '2.5.2', dokumen: 'Buku Peraturan & Panduan murid', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 42, standard: '2.5.2', dokumen: 'Buku Peraturan & Panduan Staf', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 43, standard: '2.5.1', dokumen: 'Buku / Laporan Program 3K', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 44, standard: '2.5.2', dokumen: 'Program peningkatan keakraban/ semangat kesepunyaan - RIMUP', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 45, standard: '2.5.2', dokumen: 'Perancangan program peningkatan keakraban/ semangat kesepunyaan - RIMUP', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 46, standard: '2.4', dokumen: 'Bilik Akses/ Makmal ICT', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 47, standard: '2.4', dokumen: 'PSS', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 48, standard: '2.1.1', dokumen: 'Carta Organisasi Induk', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 49, standard: '2.6', dokumen: 'Laporan Sambutan Hari Kebangsaan dan Hari Raya -OPR', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 50, standard: '2.4', dokumen: 'Rekod & Analisis Penggunaan Sumber Pendidikan', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 51, standard: '2.1.1', dokumen: 'Buku Pengurusan Tugas Guru dan AKP Tahun 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 52, standard: '2.1.2', dokumen: 'Analisis keperluan kursus/ taklimat/ bengkel staf', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 53, standard: '2.5.1', dokumen: 'Laporan Penyelenggaraan Pendawaian/ bangunan', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 54, standard: '2.1.2', dokumen: 'Penilaian keberkesanan kursus/taklimat/ bengkel staf', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 55, standard: '2.2', dokumen: 'Buku Panduan Pengurusan Aset & Stor', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 56, standard: '2.7', dokumen: 'Minit mesyuarat/ Laporan porgram Pemuafakatan PIBG', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 57, standard: '2.2', dokumen: 'Rekod/ Laporan verifikasi Aset & stor', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 58, standard: '2.5.1', dokumen: 'Polisi / Label/ Petunjuk Keselamatan / pelan kebakaran / Pemadam Api', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 59, standard: '2.1.2', dokumen: 'Analisis SPLKPM', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 60, standard: '2.1.1', dokumen: 'Rekod Prestasi Kerja Guru dan AKP', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 61, standard: '2.6', dokumen: 'Laporan Program Silang Budaya- RIMUP: makanan, pakaian & tarian tradisional', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 62, standard: '2.6', dokumen: 'Perancangan Program Silang Budaya- RIMUP', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 63, standard: '2.3', dokumen: 'Laporan Audit - kewangan', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 64, standard: '2.1.1', dokumen: 'Surat Pelantikan Tugas Staf mysg', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 65, standard: '2.1.1', dokumen: 'Buku Panduan Tugas Guru dan AKP Tahun 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 66, standard: '', dokumen: 'Laporan Jaringan dan Jalinan Sekolah', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 67, standard: 'STANDARD 3.1: PENGURUSAN KURIKULUM', dokumen: '', pic: '', status: '', link: '' },
+                        { rowIdx: 68, standard: '3.1.3', dokumen: 'Jadual Waktu', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 69, standard: '3.1.2.1', dokumen: 'Minit Mesyuarat Pengurusan Kurikulum /2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 70, standard: '3.1.2.4', dokumen: 'Rekod Subsudiari mata pelajaran', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 71, standard: '3.1.4', dokumen: 'Intervensi Penambahbaikan', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 72, standard: '3.1.2.1', dokumen: 'Rekod Pentaksiran PBD bagi murid Tahun 4- Tingkatan 5', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 73, standard: '3.1.4', dokumen: 'Jadual Peperiksaan', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 74, standard: '3.1.3', dokumen: 'Jadual Guru ganti- relief', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 75, standard: '3.1.2.1', dokumen: 'Minit Mesyuarat Panitia BM Bil 1/2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 76, standard: '3.1.2.1', dokumen: 'Rumusan Pemantauan Kurikulum Bil 1/2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 77, standard: '3.1.2.2', dokumen: 'Perancangan Strategik Panitia- OPPM', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 78, standard: '3.1.2.4', dokumen: 'Rekod Inventori', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 79, standard: '3.1.2.4', dokumen: 'Rekod Inventori', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 80, standard: '3.1.2.2', dokumen: 'Takwim panitia', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 81, standard: '3.1.2.2', dokumen: 'Penilaian Keberkesana Impak -Spect', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 82, standard: '3.1.1', dokumen: 'Dokumen Ketetapan Kurikulum', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 83, standard: '3.1.2.4', dokumen: 'Minit Mesyuarat Panitia /PLC', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 84, standard: '3.1.3', dokumen: 'Semakan KSSr & KSSM 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 85, standard: '3.1.2.1', dokumen: 'Minit Mesyurat JKS Bil 1/2025 (Mesyuarat Bidang)', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 86, standard: '3.1.2.1', dokumen: 'Rekod eRPH- semua guru Mata Pelajaran dalam Panitia', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 87, standard: '3.1.4', dokumen: 'Analisis Peperiksaan', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 88, standard: '3.1.2.1', dokumen: 'Analisis data/ headcount Peperiksaan Mata Pelajaran dalam Panitia', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 89, standard: '3.1.2.3', dokumen: 'Penggunaan Tools- Analisis Jurang, Spect, OPPM/ Grow', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 90, standard: '3.1.1', dokumen: 'Carta Organisasi Kurikulum', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 91, standard: '3.1.2.2', dokumen: 'Laporan Intervensi', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 92, standard: '3.1.2.3', dokumen: 'Semakan Headcount', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 93, standard: '3.1.2.1', dokumen: 'Rancangan Pelajaran Tahunan Mata Pelajaran Tahun 1 - Tingkatan 5', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 94, standard: 'STANDARD 3.2: PENGURUSAN KOKURIKULUM', dokumen: '', pic: '', status: '', link: '' },
+                        { rowIdx: 95, standard: '3.2.2', dokumen: 'Instrument/ Hasil Pemantauan Aktiviti semua Kelab/ Persatuan 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 96, standard: '3.2.2', dokumen: 'laporan tahunan semua Kelab/ Persatuan 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 97, standard: '3.2.4', dokumen: 'Buku Panduan/ peraturan pengurusan semua Sukan / Permainan 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 98, standard: '3.2.2', dokumen: 'Laporan aktiviti mingguan semua Kelab/ Persatuan 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 99, standard: '3.2.2', dokumen: 'Rumusan aktiviti Persatuan semua kelab/ persatuan Tahun 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 100, standard: '3.2.2', dokumen: 'Pelan Strategik, Pelan Taktikal dan Pelan Operasi semua kelab/ Persatuan 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 101, standard: '3.2.4', dokumen: 'Laporan Tahunan semua Sukan/ Permainan 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 102, standard: '3.2.4', dokumen: 'Laporan aktiviti mingguan semua Sukan/ permainan 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 103, standard: '3.2.4', dokumen: 'Rumusan aktiviti semua Sukan/ permainan 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 104, standard: '3.2.4', dokumen: 'Instrument/ Hasil pemantauan aktiviti semua Sukan / Permainan 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 105, standard: '3.2.4', dokumen: 'Pelan Strategik., Pelan taktikal dan Pelan Operasi semua Sukan/ Permainan 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 106, standard: '3.2.4', dokumen: 'Jadual Perjumpaan aktiviti semua Sukan/ Permainan 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 107, standard: '3.2.3', dokumen: 'Laporan Tahunan semua Badan Beruniform 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 108, standard: '3.2.3', dokumen: 'Rumusan aktiviti semua Badan Beruniform 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 109, standard: '3.2.3', dokumen: 'Buku Panduan pengurusan semua Badan Beruniform 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 110, standard: '3.2.3', dokumen: 'Laporan aktiviti mingguan semua Badan Beruniform 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 111, standard: '3.2.3', dokumen: 'Jadual Perjumpaan/ aktiviti semua Badan Beruniform 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 112, standard: '3.2.3', dokumen: 'Pelan Strategik, Pelan Taktikal dan Pelan Operasi semua Badan Beruniform 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 113, standard: '3.2.3', dokumen: 'Instrument/ Hasil pemantauan aktiviti semua Badan Beruniform 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 114, standard: '3.2.7', dokumen: 'Analisis PAJSK 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 115, standard: '3.2.1', dokumen: 'Cetakan Skrin group Telegram sekolah sebaran ketetapan Kokurikulum Sekolah 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 116, standard: '3.2.5', dokumen: 'Minit Mesyuarat Kokurikulum 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 117, standard: '3.2.5', dokumen: 'Pelan Strategik, Pelan Taktikal dan Pelan Operasi Program Kecemerlangan Kokurikulum 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 118, standard: '3.2.5', dokumen: 'Rekod Pencapaian Kokurikulum 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 119, standard: '3.2.1', dokumen: 'Carta Organisasi Kokurikulum', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 120, standard: '3.2.1', dokumen: 'Cetakan skrin group Telegram sebaran Carta Organisasi Kokurikulum 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 121, standard: '3.2.5', dokumen: 'Laporan Program Kecemerlangan Kokurikulum 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 122, standard: '3.2.1', dokumen: 'Dokumen Ketetapan Kokurikulum', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 123, standard: '3.2.5', dokumen: 'Takwim Pengurusan Program 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 124, standard: '3.2.1', dokumen: 'Minit Mesyuarat Kokurikulum bil 1/2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 125, standard: '3.2.6', dokumen: 'Minit Mesyuarat Sukan Bil 1/2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 126, standard: '3.2.6', dokumen: 'Takwim Sukan untuk semua 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 127, standard: '3.2.6', dokumen: 'Rekod Pencapaian Sukan 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 128, standard: '3.2.6', dokumen: 'Laporan Program Kecemerlangan Sukan 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 129, standard: 'STANDARD 3.3: PENGURUSAN HAL EHWAL MURID', dokumen: '', pic: '', status: '', link: '' },
+                        { rowIdx: 130, standard: '3.3.1', dokumen: 'Dokumen Ketetapan HEM', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 131, standard: '3.3.2', dokumen: 'Laporan MIngguan Perhimpunan Tahun 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 132, standard: '3.3.6.2', dokumen: 'Program/ Intervensi', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 133, standard: '3.3.1', dokumen: 'Carta Organisasi HEM', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 134, standard: '3.3.3', dokumen: 'Panduan / SOP menghadapi bencana kebakaran', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 135, standard: '3.3.3', dokumen: 'Program Keselamatan Murid', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 136, standard: '3.3.4', dokumen: 'Papan/ Sudut info kesihatan', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 137, standard: '3.3.4', dokumen: 'Rekod Kesihatan Murid', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 138, standard: '3.3.4', dokumen: 'Buku Panduan Pengurusan Kesihatan Murid', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 139, standard: '3.3.4', dokumen: 'Laporan Program Kesihatan', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 140, standard: '3.3.5', dokumen: 'Panduan/ Pekeliling kelayakan bantuan murid', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 141, standard: '3.3.5', dokumen: 'Senarai murid layak Bantuan', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 142, standard: '3.3.2', dokumen: 'Rekod Disiplin Murid Tahun 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 143, standard: '3.3.2', dokumen: 'Laporan/ Rumusan Rekod Disiplin Murid Tahun 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 144, standard: '3.3.6.1', dokumen: 'Kertas kerja dan laporan UBK', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 145, standard: '3.3.6.2', dokumen: 'Analisis data pentaksiran psikometrik', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 146, standard: '3.3.6.2', dokumen: 'Jadual Pentaksiran psikometrik', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 147, standard: '3.3.2', dokumen: 'Laporan Program Pembangunan Sahsiah Murid Tahun 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 148, standard: '3.3.6.2', dokumen: 'Panduan Pengurusan pentaksiran psikometrik', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 149, standard: '3.3.6.1', dokumen: 'pekeliling berkaitan Bimbingan Kaunseling', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 150, standard: '3.3.6.1', dokumen: 'Takwim UBK', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 151, standard: '3.3.2', dokumen: 'Perancangan Program Pembangunan Sahsiah Murid Tahun 2025', pic: '', status: 'Belum Lengkap', link: '' },
+                        { rowIdx: 152, standard: '3.3.6.1', dokumen: 'Buku RPH GBK', pic: '', status: 'Belum Lengkap', link: '' }
+                      ]
+                    });
+                  }, 500);
+                },
+                loginAdmin: function(pwd) { setTimeout(() => { callback(pwd === 'admin123' ? {success:true} : {success:false}); }, 300); },
+                updateInfo: function(rowIdx, pic, status, link) { setTimeout(() => { callback({success:true}); }, 400); },
+                uploadEvidence: function(base64Data, fileName, mimeType, standardId, rowIdx) { setTimeout(() => { callback({success:true, message:'Berjaya (Tiruan)'}); }, 600); },
+                addStandard: function(std, doc, pic) { setTimeout(() => { callback({success:true}); }, 400); }
+              };
+            }
+          }
+        }
+      };
+    }
+
+    let isAdmin = false;
+    let tableData = [];
+    
+    const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+    const actionModal = new bootstrap.Modal(document.getElementById('actionModal'));
+    const addModal = new bootstrap.Modal(document.getElementById('addModal'));
+
+    window.onload = function() {
+      fetchData(); // Pastikan data sentiasa dimuat semula apabila di-refresh
+    };
+
+    function fetchData() {
+      document.getElementById('loadingDiv').classList.remove('d-none');
+      document.getElementById('dataTable').classList.add('d-none');
+      google.script.run.withSuccessHandler(renderDashboard).getData();
+    }
+
+    function renderDashboard(res) {
+      document.getElementById('loadingDiv').classList.add('d-none');
+      if(res.error) { alert(res.error); return; }
+      
+      tableData = res.data;
+      
+      // Kemaskini Kad Statistik
+      document.getElementById('statJumlah').innerText = res.stats.jumlah;
+      document.getElementById('statLengkap').innerText = res.stats.lengkap;
+      document.getElementById('statBelum').innerText = res.stats.belum;
+
+      renderTable(tableData);
+      renderAnalytics(res.analytics);
+      document.getElementById('dataTable').classList.remove('d-none');
+    }
+
+    function renderTable(dataArray) {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+      
+      dataArray.forEach(row => {
+        let isTitleRow = row.dokumen.trim() === '';
+        
+        if (isTitleRow) {
+          let tr = `<tr class="row-title">
+            <td colspan="6" class="text-primary"><i class="fas fa-bookmark me-2"></i>${row.standard}</td>
+          </tr>`;
+          tbody.innerHTML += tr;
+        } else {
+          let st = row.status.toLowerCase();
+          let badge = st === 'lengkap' ? 'bg-success' : (st === 'sedang diproses' ? 'bg-warning text-dark' : 'bg-danger');
+          
+          let linkBtn = (row.link && row.link.trim() !== '#' && row.link.trim() !== '') 
+            ? `<button onclick="window.open('${row.link}', '_blank')" class="btn btn-sm btn-outline-primary"><i class="fas fa-folder-open"></i> Papar</button>` 
+            : `<span class="text-muted small">Tiada Fail</span>`;
+
+          let picDisplay = (row.pic === undefined || row.pic === null || row.pic === '' || row.pic === '-') ? '-' : `<i class="fas fa-user-circle"></i> ${row.pic}`;
+
+          let tr = `<tr>
+            <td class="fw-bold">${row.standard}</td>
+            <td>${row.dokumen}</td>
+            <td><span class="small fw-bold text-secondary">${picDisplay}</span></td>
+            <td><span class="badge ${badge} w-100">${row.status || 'Belum Lengkap'}</span></td>
+            <td class="text-center">${linkBtn}</td>
+            <td class="action-col text-center ${isAdmin ? '' : 'd-none'} no-print">
+              <button class="btn btn-sm btn-primary w-100 mb-1 shadow-sm" onclick="openActionModal(${row.rowIdx}, '${row.standard}')">
+                 Urus / Upload
+              </button>
+            </td>
+          </tr>`;
+          tbody.innerHTML += tr;
+        }
+      });
+      toggleAdminCols();
+    }
+
+    function renderAnalytics(analyticsData) {
+      const container = document.getElementById('analyticsContainer');
+      container.innerHTML = '';
+      
+      const validAnalytics = analyticsData.filter(a => a.nama !== undefined && a.nama !== null && a.nama !== '-' && a.nama.trim() !== '');
+      validAnalytics.sort((a,b) => b.data.total - a.data.total);
+
+      if(validAnalytics.length === 0) {
+        container.innerHTML = `<div class="col-12 text-center text-muted py-3">Tiada rekod pegawai (PIC) ditetapkan lagi.</div>`;
+        return;
+      }
+
+      validAnalytics.forEach(pic => {
+        let percent = (pic.data.lengkap / pic.data.total) * 100;
+        let pColor = percent === 100 ? 'bg-success' : 'bg-primary';
+        
+        container.innerHTML += `
+          <div class="col-md-6 col-lg-4 mb-3">
+            <div class="p-3 border rounded h-100 shadow-sm">
+              <h6 class="fw-bold text-dark text-truncate" title="${pic.nama}">${pic.nama}</h6>
+              <div class="d-flex justify-content-between small mb-1">
+                <span class="text-success"><i class="fas fa-check"></i> ${pic.data.lengkap} Siap</span>
+                <span class="text-danger"><i class="fas fa-times"></i> ${pic.data.belum} Belum</span>
+              </div>
+              <div class="progress" style="height: 10px;">
+                <div class="progress-bar ${pColor}" style="width: ${percent}%"></div>
+              </div>
+              <div class="text-end small mt-1 fw-bold text-muted">${Math.round(percent)}% Selesai (${pic.data.total} Total)</div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function filterTable() {
+      const q = document.getElementById('searchBox').value.toLowerCase();
+      const filtered = tableData.filter(r => 
+        r.standard.toLowerCase().includes(q) || r.dokumen.toLowerCase().includes(q) || r.pic.toLowerCase().includes(q) || r.status.toLowerCase().includes(q)
+      );
+      renderTable(filtered);
+    }
+
+    function openLoginModal() {
+      document.getElementById('loginError').classList.add('d-none');
+      document.getElementById('adminPassword').value = '';
+      loginModal.show();
+    }
+
+    function verifyLogin() {
+      const pwd = document.getElementById('adminPassword').value;
+      google.script.run.withSuccessHandler(res => {
+        if(res.success) {
+          isAdmin = true; loginModal.hide();
+          document.getElementById('btnLogin').classList.add('d-none');
+          document.getElementById('btnLogout').classList.remove('d-none');
+          toggleAdminCols();
+        } else {
+          document.getElementById('loginError').classList.remove('d-none');
+        }
+      }).loginAdmin(pwd);
+    }
+
+    function logoutAdmin() {
+      isAdmin = false;
+      document.getElementById('btnLogin').classList.remove('d-none');
+      document.getElementById('btnLogout').classList.add('d-none');
+      toggleAdminCols();
+    }
+
+    function toggleAdminCols() {
+      const cols = document.querySelectorAll('.action-col');
+      cols.forEach(col => isAdmin ? col.classList.remove('d-none') : col.classList.add('d-none'));
+    }
+
+    function openAddModal() {
+      document.getElementById('newStandard').value = '';
+      document.getElementById('newDokumen').value = '';
+      document.getElementById('newPic').value = '';
+      addModal.show();
+    }
+
+    function saveNewStandard() {
+      const btn = document.getElementById('btnAddSave');
+      const std = document.getElementById('newStandard').value.trim();
+      const doc = document.getElementById('newDokumen').value.trim();
+      const pic = document.getElementById('newPic').value.trim();
+
+      if(!std) { alert("Sila masukkan Nombor / Tajuk Standard!"); return; }
+
+      btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Menyimpan...`; 
+      btn.disabled = true;
+
+      google.script.run.withSuccessHandler(res => {
+        btn.innerHTML = `<i class="fas fa-save"></i> Simpan Standard`; 
+        btn.disabled = false;
+        if(res.success) { addModal.hide(); fetchData(); } // Refresh data automatik
+        else { alert("Ralat: " + res.message); }
+      }).addStandard(std, doc, pic);
+    }
+
+    function openActionModal(rowIdx, standard) {
+      const row = tableData.find(r => r.rowIdx === rowIdx);
+      if(!row) return;
+
+      document.getElementById('mRowIdx').value = rowIdx;
+      document.getElementById('mStandardId').value = standard;
+      document.getElementById('mStd').innerText = standard;
+      document.getElementById('mStd2').innerText = standard;
+      document.getElementById('mDocName').innerText = row.dokumen;
+      document.getElementById('mPic').value = (row.pic === '-') ? '' : (row.pic || '');
+      document.getElementById('mStatus').value = row.status || 'Belum Lengkap';
+      document.getElementById('mLink').value = row.link || '';
+      
+      document.getElementById('uploadStatus').innerText = '';
+      document.getElementById('fileInput').value = '';
+      actionModal.show();
+    }
+
+    function saveInfo() {
+      const btn = document.getElementById('btnSaveInfo');
+      btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Menyimpan...`; btn.disabled = true;
+      
+      const rowIdx = document.getElementById('mRowIdx').value;
+      const pic = document.getElementById('mPic').value;
+      const status = document.getElementById('mStatus').value;
+      const link = document.getElementById('mLink').value;
+
+      google.script.run.withSuccessHandler(res => {
+        btn.innerHTML = `<i class="fas fa-save"></i> Simpan Maklumat`; btn.disabled = false;
+        if(res.success) { actionModal.hide(); fetchData(); } // Kekal dan ambil data terkini
+      }).updateInfo(rowIdx, pic, status, link);
+    }
+
+    function handleUpload() {
+      const fileInput = document.getElementById('fileInput');
+      const statusDiv = document.getElementById('uploadStatus');
+      const btn = document.getElementById('btnUpload');
+      
+      if(fileInput.files.length === 0) { statusDiv.innerHTML = "<span class='text-danger'>Sila pilih fail dahulu!</span>"; return; }
+      
+      const file = fileInput.files[0];
+      if(file.size > 50 * 1024 * 1024) { statusDiv.innerHTML = "<span class='text-danger'>Fail terlalu besar (Maks 50MB). Sila upload manual menggunakan fungsi Pautan.</span>"; return; }
+
+      btn.disabled = true;
+      statusDiv.innerHTML = `<span class="text-primary"><i class="fas fa-spinner fa-spin"></i> Memuat naik dan mencipta folder...</span>`;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const base64Data = e.target.result.split(',')[1];
+        const fileName = file.name;
+        const mimeType = file.type;
+        const standardId = document.getElementById('mStandardId').value;
+        const rowIdx = document.getElementById('mRowIdx').value;
+
+        google.script.run.withSuccessHandler(res => {
+          btn.disabled = false;
+          if(res.success) {
+            statusDiv.innerHTML = `<span class="text-success"><i class="fas fa-check"></i> ${res.message}</span>`;
+            setTimeout(() => { actionModal.hide(); fetchData(); }, 2000); // Segarkan pangkalan data supaya butang Papar muncul
+          } else {
+            statusDiv.innerHTML = `<span class="text-danger">Ralat: ${res.message}</span>`;
+          }
+        }).uploadEvidence(base64Data, fileName, mimeType, standardId, rowIdx);
+      };
+      reader.readAsDataURL(file);
+    }
+  </script>
+</body>
+</html>
